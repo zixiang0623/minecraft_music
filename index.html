@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BGM Shuffle — Minecraft BGM プレイヤー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px;
+  --text-xs: .75rem; --text-sm: .875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-2xl: clamp(1.5rem, 5.5vw, 2.1rem);
+  --ease-out: cubic-bezier(.16, 1, .3, 1); --dur: 140ms;
+  --color-paper: oklch(97.8% .013 95); --color-paper-2: oklch(95% .018 95); --color-paper-3: oklch(91.5% .022 90);
+  --color-ink: oklch(24% .035 145); --color-ink-2: oklch(40% .035 140); --color-muted: oklch(48% .028 120); --color-rule: oklch(87.5% .024 98);
+  --color-accent: oklch(52% .14 145); --color-accent-ink: oklch(98% .01 100); --color-accent-soft: oklch(93.5% .055 140); --color-focus: oklch(50% .14 145);
+  --color-earth: oklch(54% .085 62); --color-earth-soft: oklch(90% .045 70);
+  --color-error: oklch(52% .19 27); --color-error-soft: oklch(96% .03 27);
+  --color-glass: color-mix(in oklab, var(--color-paper) 80%, transparent);
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-card: 18px; --radius-ctl: 10px; --bar-h: 52px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: var(--font-body); color: var(--color-ink); background: var(--color-paper);
+  -webkit-font-smoothing: antialiased; line-height: 1.6;
+  background-image: linear-gradient(var(--color-paper-2) 1px, transparent 1px), linear-gradient(90deg, var(--color-paper-2) 1px, transparent 1px);
+  background-size: 32px 32px; background-position: -1px -1px;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button { font: inherit; color: inherit; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* top bar */
+.bar {
+  position: sticky; top: 0; z-index: 5; height: var(--bar-h); display: flex; align-items: center; gap: var(--space-sm);
+  padding: 0 var(--space-md); background: var(--color-glass); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--color-rule);
+}
+.brand { display: flex; align-items: center; gap: var(--space-xs); font-weight: 700; letter-spacing: -.01em; }
+.brand .logo { width: 28px; height: 28px; border-radius: 6px; box-shadow: inset 0 -6px 0 oklch(40% .12 145); background: var(--color-accent); color: var(--color-accent-ink); display: grid; place-items: center; }
+.brand .logo svg { width: 16px; height: 16px; }
+.bar .sp { flex: 1; }
+.count { font-size: var(--text-xs); color: var(--color-muted); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 40px; padding: 0 var(--space-md);
+  border: 1px solid var(--color-rule); background: var(--color-paper); border-radius: var(--radius-ctl); cursor: pointer; font-weight: 500;
+  transition: background var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+.btn:hover { background: var(--color-paper-2); border-color: var(--color-paper-3); }
+.btn:active { transform: scale(.97); background: var(--color-paper-3); }
+.btn.primary { background: var(--color-accent); color: var(--color-accent-ink); border-color: transparent; }
+.btn.primary:hover { background: oklch(46% .14 145); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.icon { width: 44px; padding: 0; }
+
+main { max-width: 720px; margin: 0 auto; padding: var(--space-lg) var(--space-md) var(--space-xl); }
+.hidden { display: none !important; }
+
+/* empty / drop */
+.drop {
+  display: grid; justify-items: center; gap: var(--space-md); text-align: center; padding: var(--space-xl) var(--space-lg);
+  border: 1.5px dashed var(--color-rule); border-radius: var(--radius-card); background: color-mix(in oklab, var(--color-paper-2) 88%, transparent); margin-top: var(--space-lg);
+  transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+.drop.over { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.drop .mark { width: 56px; height: 56px; border-radius: 12px; background: var(--color-accent-soft); color: var(--color-accent); display: grid; place-items: center; }
+.drop .mark svg { width: 28px; height: 28px; }
+.drop h1 { margin: 0; font-size: var(--text-2xl); letter-spacing: -.02em; line-height: 1.25; }
+.drop p { margin: 0; color: var(--color-muted); font-size: var(--text-sm); }
+.drop .btn { min-height: 48px; padding: 0 var(--space-lg); font-size: var(--text-md); }
+.drop .btn.primary { box-shadow: 0 3px 0 oklch(38% .12 145); }
+.drop .btn.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 oklch(38% .12 145); }
+.err { margin-top: var(--space-md); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-ctl); background: var(--color-error-soft); color: var(--color-error); font-size: var(--text-sm); }
+
+/* player */
+.card { box-shadow: 0 6px 0 var(--color-paper-3); border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: var(--color-paper); overflow: hidden; }
+.now { padding: var(--space-lg) var(--space-lg) var(--space-md); }
+.eyebrow { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); color: var(--color-accent); font-weight: 700; letter-spacing: .06em; }
+.eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-accent); }
+.playing .eyebrow .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; transform: scale(.7); } }
+.title { margin: var(--space-xs) 0 2px; font-size: var(--text-2xl); font-weight: 700; letter-spacing: -.025em; line-height: 1.2; overflow-wrap: anywhere; }
+.sub { color: var(--color-muted); font-size: var(--text-sm); font-family: var(--font-data); overflow-wrap: anywhere; }
+canvas#vis { display: block; width: 100%; height: 96px; margin-top: var(--space-md); }
+
+.seek { padding: 0 var(--space-lg); display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-sm); align-items: center; font-size: var(--text-xs); color: var(--color-muted); }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; background: transparent; cursor: pointer; margin: 0; --p: 0%; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--color-accent) var(--p), var(--color-paper-3) var(--p)); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--color-paper-3); }
+input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--color-accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--color-accent); border: 3px solid var(--color-paper); box-shadow: 0 0 0 1px var(--color-accent); }
+input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--color-accent); border: 3px solid var(--color-paper); box-shadow: 0 0 0 1px var(--color-accent); }
+
+.ctrl { display: flex; align-items: center; justify-content: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg) var(--space-lg); }
+.ctrl .btn.play { width: 68px; height: 68px; border-radius: 20px; padding: 0; box-shadow: 0 4px 0 oklch(38% .12 145); }
+.ctrl .btn.play:active { transform: translateY(3px); box-shadow: 0 1px 0 oklch(38% .12 145); }
+.ctrl .btn.play svg { width: 28px; height: 28px; }
+.vol { display: flex; align-items: center; gap: var(--space-xs); width: 130px; color: var(--color-muted); }
+.vol input { width: 100%; }
+.ctrl .sp { flex: 1; }
+
+.q-head { display: flex; align-items: baseline; justify-content: space-between; margin: var(--space-lg) 0 var(--space-xs); }
+.q-head h2 { margin: 0; font-size: var(--text-sm); font-weight: 700; letter-spacing: .04em; color: var(--color-ink-2); }
+.q-head span { font-size: var(--text-xs); color: var(--color-muted); }
+ol.q { list-style: none; margin: 0; padding: 0; border: 1px solid var(--color-rule); border-radius: var(--radius-card); overflow: hidden; }
+ol.q li { border-bottom: 1px solid var(--color-rule); }
+ol.q li:last-child { border: 0; }
+ol.q button { width: 100%; display: flex; gap: var(--space-sm); align-items: center; text-align: left; padding: var(--space-sm) var(--space-md); min-height: 48px; background: transparent; border: 0; cursor: pointer; transition: background var(--dur) var(--ease-out); }
+ol.q button:hover { background: var(--color-paper-2); }
+ol.q button:active { background: var(--color-paper-3); }
+ol.q .n { width: 1.6em; color: var(--color-muted); font-size: var(--text-xs); text-align: right; }
+ol.q .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
+ol.q .f { color: var(--color-muted); font-size: var(--text-xs); }
+.kbd { margin-top: var(--space-lg); color: var(--color-muted); font-size: var(--text-xs); display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
+.kbd kbd { font-family: var(--font-data); background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 0 5px; }
+.page-drop { position: fixed; inset: 0; z-index: 20; display: none; place-items: center; background: color-mix(in oklab, var(--color-accent-soft) 85%, transparent); color: var(--color-accent); font-weight: 700; font-size: var(--text-lg); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.page-drop.on { display: grid; }
+@media (max-width: 420px) { .vol { display: none; } .ctrl { gap: var(--space-sm); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" x2="5" y1="19" y2="5"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></symbol>
+</svg>
+
+<header class="bar">
+  <div class="brand"><span class="logo"><svg class="i"><use href="#i-music"/></svg></span>BGM Shuffle</div>
+  <div class="sp"></div>
+  <span class="count num hidden" id="count"></span>
+  <button class="btn" id="openBtn"><svg class="i"><use href="#i-folder"/></svg><span>フォルダ</span></button>
+</header>
+
+<main>
+  <section class="drop" id="drop">
+    <span class="mark"><svg class="i"><use href="#i-folder"/></svg></span>
+    <h1>フォルダを選ぶだけで、<br>すぐランダム再生。</h1>
+    <p>抽出したMinecraftのBGMフォルダを選択、またはここにドロップ。サブフォルダも自動で読み込みます。</p>
+    <button class="btn primary" id="openBtn2"><svg class="i"><use href="#i-folder"/></svg>フォルダを読み込む</button>
+    <div class="err hidden" id="err" role="alert"></div>
+  </section>
+
+  <section id="player" class="hidden">
+    <div class="card" id="card">
+      <div class="now">
+        <div class="eyebrow"><span class="dot"></span><span id="state">NOW PLAYING</span></div>
+        <h1 class="title" id="title">—</h1>
+        <div class="sub" id="sub">—</div>
+        <canvas id="vis" aria-hidden="true"></canvas>
+      </div>
+      <div class="seek">
+        <span class="num" id="cur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="再生位置">
+        <span class="num" id="dur">0:00</span>
+      </div>
+      <div class="ctrl">
+        <div class="vol sp-l"><svg class="i"><use href="#i-vol"/></svg><input type="range" id="vol" min="0" max="100" value="70" aria-label="音量"></div>
+        <span class="sp"></span>
+        <button class="btn icon" id="prev" aria-label="前の曲"><svg class="i"><use href="#i-prev"/></svg></button>
+        <button class="btn primary play" id="play" aria-label="再生/一時停止"><svg class="i"><use href="#i-play"/></svg></button>
+        <button class="btn icon" id="next" aria-label="次の曲"><svg class="i"><use href="#i-next"/></svg></button>
+        <span class="sp"></span>
+        <button class="btn icon" id="reshuffle" aria-label="シャッフルし直す" title="シャッフルし直す"><svg class="i"><use href="#i-shuffle"/></svg></button>
+      </div>
+    </div>
+
+    <div class="q-head"><h2>次に再生</h2><span class="num" id="qinfo"></span></div>
+    <ol class="q" id="queue"></ol>
+
+    <div class="kbd">
+      <span><kbd>Space</kbd> 再生/停止</span><span><kbd>→</kbd> 次の曲</span><span><kbd>←</kbd> 前の曲</span><span><kbd>↑</kbd><kbd>↓</kbd> 音量</span>
+    </div>
+  </section>
+</main>
+
+<div class="page-drop" id="pageDrop">ここにフォルダをドロップ</div>
+<input type="file" id="picker" webkitdirectory directory multiple class="hidden">
+<audio id="audio" preload="auto"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const audio = $('audio'), picker = $('picker');
+  const EXT = /\.(ogg|oga|mp3|wav|m4a|aac|flac|opus|webm)$/i;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const anim = (t, v) => { if (window.gsap && !reduce) gsap.from(t, v); };
+
+  let tracks = [], order = [], pos = -1, url = null;
+  let actx, analyser, data;
+
+  /* ---------- 読み込み ---------- */
+  const open = () => picker.click();
+  $('openBtn').onclick = $('openBtn2').onclick = open;
+  picker.onchange = () => { load([...picker.files].map(f => ({ file: f, path: f.webkitRelativePath || f.name }))); picker.value = ''; };
+
+  async function walk(entry, base, out) {
+    if (entry.isFile) {
+      await new Promise(r => entry.file(f => { out.push({ file: f, path: base + f.name }); r(); }, r));
+    } else if (entry.isDirectory) {
+      const rd = entry.createReader();
+      let batch;
+      do {
+        batch = await new Promise(r => rd.readEntries(r, () => r([])));
+        for (const e of batch) await walk(e, base + entry.name + '/', out);
+      } while (batch.length);
+    }
+  }
+  const dropTargets = [window];
+  let depth = 0;
+  addEventListener('dragenter', e => { e.preventDefault(); depth++; $('pageDrop').classList.add('on'); });
+  addEventListener('dragleave', e => { depth = Math.max(0, depth - 1); if (!depth) $('pageDrop').classList.remove('on'); });
+  addEventListener('dragover', e => e.preventDefault());
+  addEventListener('drop', async e => {
+    e.preventDefault(); depth = 0; $('pageDrop').classList.remove('on');
+    const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+    const out = [];
+    if (items.length) for (const it of items) await walk(it, '', out);
+    else [...e.dataTransfer.files].forEach(f => out.push({ file: f, path: f.name }));
+    load(out);
+  });
+
+  function load(list) {
+    const audios = list.filter(x => EXT.test(x.file.name));
+    if (!audios.length) {
+      const el = $('err');
+      el.textContent = '音声ファイル(.ogg / .mp3 / .wav など)が見つかりませんでした。別のフォルダを選んでください。';
+      el.classList.remove('hidden');
+      return;
+    }
+    $('err').classList.add('hidden');
+    tracks = audios.map(x => {
+      const parts = x.path.split('/');
+      const name = parts.pop().replace(EXT, '');
+      const folder = parts.length > 1 ? parts.slice(1).join('/') : (parts[0] || '');
+      return { file: x.file, title: name.replace(/[_]+/g, ' ').trim(), folder, key: x.path };
+    }).sort((a, b) => a.key.localeCompare(b.key, 'ja', { numeric: true }));
+    $('drop').classList.add('hidden');
+    $('player').classList.remove('hidden');
+    $('count').textContent = tracks.length + ' tracks';
+    $('count').classList.remove('hidden');
+    anim('#card', { y: 16, opacity: 0, duration: .6, ease: 'expo.out' });
+    shuffle(true);
+    go(0);
+  }
+
+  /* ---------- キュー ---------- */
+  function shuffle(initial) {
+    const last = order[pos];
+    const a = tracks.map((_, i) => i);
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    if (!initial && a.length > 1 && a[0] === last) [a[0], a[1]] = [a[1], a[0]];
+    order = a; pos = -1;
+  }
+  function go(p) {
+    if (!tracks.length) return;
+    if (p >= order.length) { shuffle(false); p = 0; }
+    if (p < 0) p = 0;
+    pos = p;
+    const t = tracks[order[pos]];
+    if (url) URL.revokeObjectURL(url);
+    url = URL.createObjectURL(t.file);
+    audio.src = url;
+    audio.play().catch(() => {});
+    $('title').textContent = t.title;
+    $('sub').textContent = t.folder ? t.folder + ' / ' + t.file.name : t.file.name;
+    document.title = t.title + ' — BGM Shuffle';
+    anim('.title, .sub', { y: 10, opacity: 0, duration: .5, ease: 'expo.out', stagger: .05 });
+    renderQueue();
+    if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: 'Minecraft', album: t.folder || 'BGM' });
+  }
+  function renderQueue() {
+    const ul = $('queue'); ul.textContent = '';
+    const upto = Math.min(order.length, pos + 9);
+    for (let i = pos + 1; i < upto; i++) {
+      const t = tracks[order[i]];
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.innerHTML = '<span class="n num"></span><span class="t"></span><span class="f"></span>';
+      b.children[0].textContent = i - pos;
+      b.children[1].textContent = t.title;
+      b.children[2].textContent = t.folder;
+      b.onclick = () => go(i);
+      li.appendChild(b); ul.appendChild(li);
+    }
+    $('qinfo').textContent = `${pos + 1} / ${order.length}`;
+    if (!ul.children.length) { const li = document.createElement('li'); li.innerHTML = '<button disabled><span class="t">このあと自動で再シャッフル</span></button>'; ul.appendChild(li); }
+  }
+
+  /* ---------- 再生制御 ---------- */
+  const setIcon = playing => {
+    $('play').querySelector('use').setAttribute('href', playing ? '#i-pause' : '#i-play');
+    $('card').classList.toggle('playing', playing);
+    $('state').textContent = playing ? 'NOW PLAYING' : 'PAUSED';
+  };
+  const toggle = () => { if (!tracks.length) return; audio.paused ? audio.play() : audio.pause(); };
+  $('play').onclick = toggle;
+  $('next').onclick = () => go(pos + 1);
+  $('prev').onclick = () => (audio.currentTime > 3 || pos <= 0) ? (audio.currentTime = 0) : go(pos - 1);
+  $('reshuffle').onclick = () => { shuffle(false); go(0); anim('#reshuffle svg', { rotate: -180, duration: .5, ease: 'expo.out' }); };
+  audio.addEventListener('play', () => { setIcon(true); initViz(); });
+  audio.addEventListener('pause', () => setIcon(false));
+  audio.addEventListener('ended', () => go(pos + 1));
+  audio.addEventListener('error', () => { if (tracks.length > 1) go(pos + 1); });
+
+  const fmt = s => { if (!isFinite(s)) return '0:00'; s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const seek = $('seek'), vol = $('vol');
+  const fill = el => el.style.setProperty('--p', (el.value / el.max * 100) + '%');
+  let dragging = false;
+  seek.oninput = () => { dragging = true; fill(seek); $('cur').textContent = fmt(seek.value / 1000 * audio.duration); };
+  seek.onchange = () => { audio.currentTime = seek.value / 1000 * audio.duration; dragging = false; };
+  audio.addEventListener('timeupdate', () => {
+    $('dur').textContent = fmt(audio.duration);
+    if (dragging) return;
+    $('cur').textContent = fmt(audio.currentTime);
+    seek.value = audio.duration ? audio.currentTime / audio.duration * 1000 : 0; fill(seek);
+  });
+  let v0 = 70; try { v0 = +localStorage.getItem('bgm.vol') || 70; } catch (e) {}
+  vol.value = v0; audio.volume = v0 / 100; fill(vol);
+  vol.oninput = () => { audio.volume = vol.value / 100; fill(vol); try { localStorage.setItem('bgm.vol', vol.value); } catch (e) {} };
+
+  addEventListener('keydown', e => {
+    if (!tracks.length || e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    else if (e.code === 'ArrowRight') $('next').click();
+    else if (e.code === 'ArrowLeft') $('prev').click();
+    else if (e.code === 'ArrowUp' && e.target !== vol) { e.preventDefault(); vol.value = Math.min(100, +vol.value + 5); vol.oninput(); }
+    else if (e.code === 'ArrowDown' && e.target !== vol) { e.preventDefault(); vol.value = Math.max(0, +vol.value - 5); vol.oninput(); }
+  });
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', toggle);
+    navigator.mediaSession.setActionHandler('pause', toggle);
+    navigator.mediaSession.setActionHandler('nexttrack', () => $('next').click());
+    navigator.mediaSession.setActionHandler('previoustrack', () => $('prev').click());
+  }
+
+  /* ---------- ビジュアライザ ---------- */
+  const cv = $('vis'), cx = cv.getContext('2d');
+  function initViz() {
+    if (actx) { actx.resume(); return; }
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = actx.createMediaElementSource(audio);
+      analyser = actx.createAnalyser(); analyser.fftSize = 128; analyser.smoothingTimeConstant = .82;
+      src.connect(analyser); analyser.connect(actx.destination);
+      data = new Uint8Array(analyser.frequencyBinCount);
+      draw();
+    } catch (e) { actx = null; }
+  }
+  function draw() {
+    requestAnimationFrame(draw);
+    const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== w * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, w, h);
+    if (audio.paused && !reduce) {} // 停止中は減衰したまま
+    analyser.getByteFrequencyData(data);
+    const cs = getComputedStyle(document.documentElement);
+    const grass = cs.getPropertyValue('--color-accent'), earth = cs.getPropertyValue('--color-earth');
+    const n = Math.max(12, Math.floor(w / 22)), gap = 3, bw = (w - gap * (n - 1)) / n;
+    const rows = Math.max(2, Math.floor((h + gap) / (bw + gap)));
+    for (let i = 0; i < n; i++) {
+      const v = data[Math.floor(i / n * data.length * .75)] / 255;
+      const act = Math.max(1, Math.round(v * rows));
+      for (let r = 0; r < act; r++) {
+        cx.fillStyle = r === act - 1 ? grass : earth;
+        cx.globalAlpha = r === act - 1 ? 1 : .55;
+        cx.fillRect(i * (bw + gap), h - (r + 1) * bw - r * gap, bw, bw);
+      }
+    }
+    cx.globalAlpha = 1;
+  }
+})();
+</script>
+</body>
+</html>
