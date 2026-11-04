@@ -277,7 +277,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
     <div class="opt" style="margin-top:10px"><span>風景も天気・時間帯に合わせる</span><button class="tgl" id="wxScene" role="switch" aria-checked="true" aria-label="風景も天気に合わせる"></button></div>
     <div class="grp">いまの補正(FXに上乗せ)</div>
     <div class="dlist" id="wxDelta" style="margin-top:6px"></div>
-    <div class="note" style="margin-top:8px">湿度 → 残響とこもり / 気温 → 高音と低音 / 風 → オートパンとトレモロ / 気圧 → 速度 / 雨・雪・霧・雷雨 → 空間系と環境音。15分ごとに自動更新します。</div>
+    <div class="note" style="margin-top:8px">湿度 → 残響とこもり / 気温 → 高音と低音 / 風 → オートパンとトレモロ / 気圧 → 速度 / 雨・雪・霧・雷雨 → 空間系の変化。音は足さず、今の音にかかるエフェクトだけが変わります。15分ごとに自動更新します。</div>
     <div class="grp">プレビュー</div>
     <div class="seg" id="wxForce" style="margin-top:6px"><button data-v="live">実際</button><button data-v="clear">晴れ</button><button data-v="cloudy">曇り</button><button data-v="rain">雨</button><button data-v="storm">雷雨</button><button data-v="snow">雪</button><button data-v="fog">霧</button></div>
   </div>
@@ -285,8 +285,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
     <div class="grp" style="margin-top:0">SCENE</div>
     <div class="rowl"><b>時間帯</b><div class="seg" id="sMood"><button data-v="auto">曲ごとに自動</button><button data-v="dawn">夜明け</button><button data-v="day">昼</button><button data-v="dusk">夕暮れ</button><button data-v="night">夜</button></div></div>
     <div class="rowl"><b>天気(手動)</b><div class="seg" id="sWeather"><button data-v="clear">晴れ</button><button data-v="rain">雨</button><button data-v="storm">雷雨</button><button data-v="snow">雪</button><button data-v="fog">霧</button></div><div class="note">天気連動と「風景も合わせる」がオンの間は、実際の天気が優先されます。</div></div>
-    <div class="row" style="margin-top:6px"><label for="rainVol">環境音(雨・風)</label><input type="range" id="rainVol" min="0" max="100"><output class="num" id="o-rainVol"></output></div>
-    <div class="grp">PLAYBACK</div>
+        <div class="grp">PLAYBACK</div>
     <div class="rowl"><b>再生モード</b><div class="seg" id="sMode"><button data-v="shuffle">シャッフル</button><button data-v="seq">順番</button><button data-v="one">1曲ループ</button></div></div>
     <div class="opt" style="margin-top:10px"><span>曲の頭と終わりをフェード</span><button class="tgl" id="fade" role="switch" aria-checked="true" aria-label="フェード"></button></div>
     <div class="rowl"><b>スリープタイマー</b><div class="seg" id="sSleep"><button data-v="0">なし</button><button data-v="15">15分</button><button data-v="30">30分</button><button data-v="60">60分</button><button data-v="90">90分</button></div><div class="note">時間になるとゆっくり音量を下げて停止します。</div></div>
@@ -312,7 +311,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
   const fill = el => el.style.setProperty('--p', (el.value - el.min) / (el.max - el.min) * 100 + '%');
   const fmt = s => { if (!isFinite(s)) return '0:00'; s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
-  const S = Object.assign({ mood: 'auto', weather: 'clear', rainVol: 40, fade: true, mode: 'shuffle', favOnly: false, vol: 70, wxOn: true, wxAmt: 100, wxScene: true, wxPlace: 'nagoya', wxLat: null, wxLon: null, wxForce: 'live' }, store.get('bgm.set', {}));
+  const S = Object.assign({ mood: 'auto', weather: 'clear', fade: true, mode: 'shuffle', favOnly: false, vol: 70, wxOn: true, wxAmt: 100, wxScene: true, wxPlace: 'nagoya', wxLat: null, wxLon: null, wxForce: 'live' }, store.get('bgm.set', {}));
   const saveS = () => store.set('bgm.set', S);
   S.wxForce = 'live'; let WX = null, WXE = null, wxStatus = '取得中…';
   const favs = new Set(store.get('bgm.fav', [])), hides = new Set(store.get('bgm.hide', []));
@@ -573,7 +572,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
       const g = () => actx.createGain(), f = t => { const n = actx.createBiquadFilter(); n.type = t; return n; };
       const src = actx.createMediaElementSource(audio);
       N = { hp: f('highpass'), bass: f('lowshelf'), treble: f('highshelf'), lp: f('lowpass'), shaper: actx.createWaveShaper(), trem: g(), lfo: actx.createOscillator(), lfoG: g(),
-            pan: actx.createStereoPanner(), lfo2: actx.createOscillator(), lfo2G: g(), mix: g(), dry: g(), conv: actx.createConvolver(), rev: g(), dly: actx.createDelay(2), fb: g(), echo: g(), out: g(), master: g(), rainF: f('bandpass'), rainG: g() };
+            pan: actx.createStereoPanner(), lfo2: actx.createOscillator(), lfo2G: g(), mix: g(), dry: g(), conv: actx.createConvolver(), rev: g(), dly: actx.createDelay(2), fb: g(), echo: g(), out: g(), master: g() };
       N.bass.frequency.value = 180; N.treble.frequency.value = 4500; N.shaper.oversample = '2x';
       N.conv.buffer = impulse(fx.size / 10, 2.6); builtSize = fx.size; N.lfo2.frequency.value = .2;
       src.connect(N.hp); N.hp.connect(N.bass); N.bass.connect(N.treble); N.treble.connect(N.lp); N.lp.connect(N.shaper); N.shaper.connect(N.trem); N.trem.connect(N.pan); N.pan.connect(N.mix);
@@ -583,15 +582,10 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
       N.mix.connect(N.dly); N.dly.connect(N.fb); N.fb.connect(N.dly); N.dly.connect(N.echo); N.echo.connect(N.out);
       analyser = actx.createAnalyser(); analyser.fftSize = 128; analyser.smoothingTimeConstant = .8;
       N.out.connect(analyser); N.out.connect(N.master); N.master.connect(actx.destination);
-      // 雨音(ノイズ)
-      const nb = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-      N.noiseBuf = nb; const rs = actx.createBufferSource(); rs.buffer = nb; rs.loop = true; N.rainF.frequency.value = 1800; N.rainF.Q.value = .3; N.rainG.gain.value = 0;
-      rs.connect(N.rainF); N.rainF.connect(N.rainG); N.rainG.connect(N.master); rs.start();
-      data = new Uint8Array(analyser.frequencyBinCount); applyFx(); setRain();
+      data = new Uint8Array(analyser.frequencyBinCount); applyFx();
     } catch (e) { actx = null; N = null; }
   }
   function fadeIn() { if (!N) return; const g = N.master.gain, t = actx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(S.fade ? 0 : 1, t); if (S.fade) g.linearRampToValueAtTime(1, t + 1.6); }
-  /* setRain は天気連動ブロックで定義 */
   function applyFx() {
     const E = effFx();
     audio.defaultPlaybackRate = audio.playbackRate = E.speed / 100;
@@ -664,24 +658,9 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
     return E;
   }
 
-  const AMB = { rain: [1800, .3, .35], storm: [1400, .3, .5], snow: [500, .6, .12], fog: [300, .8, .08], clear: [1800, .3, 0] };
-  function setRain() {
-    if (!N) return; const a = AMB[sceneWeather()] || AMB.clear, t = actx.currentTime;
-    N.rainF.frequency.setTargetAtTime(a[0], t, .5); N.rainF.Q.setTargetAtTime(a[1], t, .5); N.rainG.gain.setTargetAtTime(a[2] * S.rainVol / 100, t, .5);
-  }
-  function thunderLoop() {
+  function thunderLoop() {   // 稲妻の光のみ(音は出さない)
     clearTimeout(thunderT); if (sceneWeather() !== 'storm') return;
-    thunderT = setTimeout(() => {
-      if (sceneWeather() !== 'storm') return;
-      flash = 1; setTimeout(() => { flash = .7; }, 140);
-      if (N && !audio.paused) {
-        const t = actx.currentTime + .4 + Math.random() * 1.2, src = actx.createBufferSource(), lp = actx.createBiquadFilter(), gg = actx.createGain();
-        src.buffer = N.noiseBuf; src.loop = true; lp.type = 'lowpass'; lp.frequency.value = 140;
-        gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(.12 + .8 * S.rainVol / 100, t + .08); gg.gain.exponentialRampToValueAtTime(.001, t + 3.2);
-        src.connect(lp); lp.connect(gg); gg.connect(N.master); src.start(t); src.stop(t + 3.4);
-      }
-      thunderLoop();
-    }, 7000 + Math.random() * 16000);
+    thunderT = setTimeout(() => { if (sceneWeather() !== 'storm') return; flash = 1; setTimeout(() => { flash = .7; }, 140); thunderLoop(); }, 7000 + Math.random() * 16000);
   }
 
   async function fetchWx() {
@@ -698,7 +677,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
     refreshWx(true);
   }
   function refreshWx(announce) {
-    resolveWx(); applyFx(); renderWx(); setRain(); thunderLoop();
+    resolveWx(); applyFx(); renderWx(); thunderLoop();
     if (S.mood === 'auto' && S.wxOn && S.wxScene && WXE) pickMood();
     const on = S.wxOn && WXE, t = $('wxtag'); t.classList.toggle('hidden', !on);
     if (on) { $('wxtagIcon').setAttribute('href', '#i-' + ICON[WXE.icon]); $('wxtagTxt').textContent = `${WXE.label} ${Math.round(WXE.temp)}° 湿${Math.round(WXE.hum)}%`; }
@@ -746,10 +725,7 @@ input[type=range]::-moz-range-thumb { width: 8px; height: 14px; border-radius: 0
 
   /* シーン設定 */
   bindSeg('sMood', () => S.mood, v => { S.mood = v; saveS(); pickMood(); });
-  bindSeg('sWeather', () => S.weather, v => { S.weather = v; saveS(); setRain(); thunderLoop(); toast({ clear: '晴れ', rain: '雨', storm: '雷雨', snow: '雪', fog: '霧' }[v] || v); });
-  const rv = $('rainVol'); rv.value = S.rainVol; fill(rv); $('o-rainVol').textContent = S.rainVol + '%';
-  rv.oninput = () => { S.rainVol = +rv.value; fill(rv); $('o-rainVol').textContent = S.rainVol + '%'; saveS(); setRain(); };
-
+  bindSeg('sWeather', () => S.weather, v => { S.weather = v; saveS(); thunderLoop(); toast({ clear: '晴れ', rain: '雨', storm: '雷雨', snow: '雪', fog: '霧' }[v] || v); });
   /* ================= キー操作 ================= */
   addEventListener('keydown', e => {
     const tg = e.target; if (e.metaKey || e.ctrlKey || e.altKey) return;
